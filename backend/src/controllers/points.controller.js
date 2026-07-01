@@ -1,3 +1,4 @@
+// src/controllers/points.controller.js
 const { supabase } = require('../config/supabase');
 
 // ── Award points — 24h dedup per user+reason+ref_id ──────────
@@ -147,6 +148,31 @@ const saveLessonProgress = async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    // Auto-award XP when a lesson is completed
+    if (status === 'completed') {
+      const LESSON_XP = xp_earned || 10;
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: existing } = await supabase
+        .from('point_transactions')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('reason',  'lesson_completed')
+        .eq('ref_id',  lessonId)
+        .gte('created_at', since)
+        .limit(1);
+
+      if (!existing || existing.length === 0) {
+        await supabase.rpc('award_points', {
+          p_user_id:  userId,
+          p_points:   LESSON_XP,
+          p_reason:   'lesson_completed',
+          p_ref_id:   lessonId,
+          p_ref_type: 'lesson',
+          p_meta:     null,
+        });
+      }
+    }
 
     return res.json({ success: true, data });
   } catch (err) {

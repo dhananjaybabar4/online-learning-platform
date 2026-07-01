@@ -141,9 +141,7 @@ const LandingPage = () => {
 
       {/* ── ABOUT ── */}
       <div id="about" style={{ padding: '80px 72px', textAlign: 'center', background: '#faf9ff', borderTop: '1px solid #ece9f8', borderBottom: '1px solid #ece9f8' }}>
-        <div style={{ display: 'inline-block', background: '#ede9ff', color: '#3b2d80', fontSize: '10.5px', fontWeight: 700, padding: '4px 14px', borderRadius: '20px', letterSpacing: '1.5px', marginBottom: '16px' }}>
-          ABOUT ATL
-        </div>
+        
         <h2 style={{ fontSize: '28px', fontWeight: 800, color: '#2d2260', marginBottom: '16px' }}>What is Anytime Learning?</h2>
         <p style={{ fontSize: '15.5px', color: '#6b6589', lineHeight: 1.9, maxWidth: '540px', margin: '0 auto' }}>
           ATL is a learning platform built for students who want to learn coding — whether you are a complete beginner or preparing for placement. No rush, no pressure. Study when you want, how you want.

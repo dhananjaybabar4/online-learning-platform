@@ -92,6 +92,16 @@ const fuzzyMatch = (input, answer) => {
   return false;
 };
 
+// ── Sync XP to localStorage so Home.jsx XP card stays in sync ──
+const syncXpToLocal = (xpEarned) => {
+  try {
+    const current = parseInt(localStorage.getItem('atl_xp') || '0', 10);
+    const updated = current + xpEarned;
+    localStorage.setItem('atl_xp',       String(updated));
+    localStorage.setItem('atl_xp_total', String(updated));
+  } catch {}
+};
+
 // ══════════════════════════════════════════════════════════════
 // STORY HOME
 // ══════════════════════════════════════════════════════════════
@@ -121,7 +131,7 @@ const StoryHome = ({ stories, onSelectChapter, onLogout }) => (
         const chapters = story.chapters || [];
         const done     = chapters.filter(c => c.completed).length;
         const pct      = chapters.length ? Math.round((done / chapters.length) * 100) : 0;
-        const nextIdx  = chapters.findIndex(c => !c.completed); // first incomplete
+        const nextIdx  = chapters.findIndex(c => !c.completed);
         const enriched = chapters.map((ch, i) => ({
           ...ch,
           chapterNum: i + 1,
@@ -174,7 +184,7 @@ const StoryHome = ({ stories, onSelectChapter, onLogout }) => (
               </div>
             </div>
 
-            {/* ── Chapter list — horizontal scroll row ── */}
+            {/* ── Chapter list ── */}
             <div style={{
               background: '#fff',
               border: '1px solid #e5e7eb',
@@ -182,9 +192,7 @@ const StoryHome = ({ stories, onSelectChapter, onLogout }) => (
               borderRadius: '0 0 10px 10px',
               padding: '20px 22px',
             }}>
-              {/* Learning path connector line */}
               <div style={{ position: 'relative' }}>
-                {/* Horizontal line behind cards */}
                 <div style={{
                   position: 'absolute', top: 36, left: 20, right: 20, height: 2,
                   background: '#e5e7eb', zIndex: 0,
@@ -211,7 +219,6 @@ const StoryHome = ({ stories, onSelectChapter, onLogout }) => (
                           opacity: locked ? 0.55 : 1,
                         }}>
 
-                        {/* Step circle + connector */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
                           <div style={{
                             width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
@@ -227,7 +234,6 @@ const StoryHome = ({ stories, onSelectChapter, onLogout }) => (
                           </div>
                         </div>
 
-                        {/* Card body */}
                         <div style={{
                           flex: 1,
                           border: `1.5px solid ${isDone ? '#86efac' : isNext ? ATL : '#e5e7eb'}`,
@@ -236,7 +242,6 @@ const StoryHome = ({ stories, onSelectChapter, onLogout }) => (
                           overflow: 'hidden',
                           display: 'flex', flexDirection: 'column',
                         }}>
-                          {/* Chapter image */}
                           {ch.image_url && !locked ? (
                             <div style={{ height: 72, overflow: 'hidden' }}>
                               <img src={ch.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -249,14 +254,12 @@ const StoryHome = ({ stories, onSelectChapter, onLogout }) => (
                           )}
 
                           <div style={{ padding: '10px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            {/* Chapter number */}
                             <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: isDone ? '#16a34a' : locked ? '#9ca3af' : ATL, textTransform: 'uppercase', letterSpacing: .6 }}>
                               Chapter {ch.chapterNum}
                             </p>
                             <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: locked ? '#9ca3af' : '#1e1b4b', lineHeight: 1.35 }}>
                               {ch.title}
                             </p>
-                            {/* Stars if done */}
                             {isDone && (
                               <div style={{ display: 'flex', gap: 1, margin: '2px 0' }}>
                                 {[1,2,3].map(s => <span key={s} style={{ fontSize: 11, opacity: s <= (ch.stars||3) ? 1 : .2 }}>⭐</span>)}
@@ -265,7 +268,6 @@ const StoryHome = ({ stories, onSelectChapter, onLogout }) => (
                             <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af' }}>{taskCt} tasks</p>
                           </div>
 
-                          {/* Action button */}
                           <button
                             disabled={locked}
                             onClick={e => { e.stopPropagation(); if (!locked) onSelectChapter(story, ch); }}
@@ -316,7 +318,7 @@ const StoryHome = ({ stories, onSelectChapter, onLogout }) => (
 );
 
 // ══════════════════════════════════════════════════════════════
-// FEEDBACK POPUP  — shown on correct / wrong
+// FEEDBACK POPUP
 // ══════════════════════════════════════════════════════════════
 const FeedbackPopup = ({ type, msg }) => {
   if (!type) return null;
@@ -341,7 +343,7 @@ const FeedbackPopup = ({ type, msg }) => {
 };
 
 // ══════════════════════════════════════════════════════════════
-// RAM CARD  — alternates left/right per task index, mood-based image
+// RAM CARD
 // ══════════════════════════════════════════════════════════════
 const RamCard = ({ mood, dialog, taskIdx, totalTasks, idx }) => {
   const isRight  = taskIdx % 2 === 1;
@@ -349,7 +351,6 @@ const RamCard = ({ mood, dialog, taskIdx, totalTasks, idx }) => {
   const ramSrc   = RAM_IMGS[mood] || RAM_IMGS.default;
   const [imgFailed, setImgFailed] = useState(false);
 
-  // When mood changes, try loading the new image again
   useEffect(() => { setImgFailed(false); }, [ramSrc]);
 
   return (
@@ -360,8 +361,6 @@ const RamCard = ({ mood, dialog, taskIdx, totalTasks, idx }) => {
       gap: 12,
       marginBottom: 24,
     }}>
-
-      {/* Ram image */}
       <div style={{ width: 90, height: 110, flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
         {!imgFailed ? (
           <img
@@ -379,7 +378,6 @@ const RamCard = ({ mood, dialog, taskIdx, totalTasks, idx }) => {
         )}
       </div>
 
-      {/* Speech bubble */}
       <div style={{
         flex: 1, position: 'relative',
         background: '#fff',
@@ -388,7 +386,6 @@ const RamCard = ({ mood, dialog, taskIdx, totalTasks, idx }) => {
         padding: '13px 16px',
         boxShadow: '0 2px 8px rgba(0,0,0,.06)',
       }}>
-        {/* bubble pointer */}
         <div style={{
           position: 'absolute',
           bottom: 14,
@@ -484,7 +481,6 @@ const TypeAns = ({ task, onCorrect, onWrong }) => {
   );
 };
 
-// ── FillBlank — fixed: single inline sentence with one input embedded ──
 const FillBlank = ({ task, onCorrect, onWrong }) => {
   const template = task.template || task.question || '';
   const parts    = template.split('___');
@@ -505,7 +501,6 @@ const FillBlank = ({ task, onCorrect, onWrong }) => {
     else { setSt('bad'); setTimeout(() => setSt(null), 1500); onWrong(); }
   };
 
-  // No blanks — show plain input below
   if (parts.length <= 1) return (
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
       <p style={{ margin:0, fontSize:16, fontWeight:600, color:'#1e1b4b', lineHeight:1.6 }}>{template}</p>
@@ -515,7 +510,6 @@ const FillBlank = ({ task, onCorrect, onWrong }) => {
     </div>
   );
 
-  // Inline blanks — rendered as a flowing sentence
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
       <div style={{ fontSize:16, lineHeight:2.4, color:'#1e1b4b', fontWeight:500, padding:'12px 0' }}>
@@ -572,51 +566,62 @@ const KeyboardTask = ({ task, onCorrect, onWrong }) => {
       if(c.join('+')=== expected.join('+')) { e.preventDefault(); setSt('ok'); setTimeout(onCorrect,700); }
       else if(c.length>=expected.length) { setSt('bad'); setTimeout(()=>{setSt(null);setPressed([]);},1200); onWrong(); }
     };
-    window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h);
-  }, []);
+    window.addEventListener('keydown',h); return()=>window.removeEventListener('keydown',h);
+  },[]);
   return (
-    <div style={{ background:'#f9fafb', border:'1px solid #e5e7eb', padding:'28px 16px', textAlign:'center' }}>
-      <p style={{ margin:'0 0 18px', color:'#6b7280', fontSize:13, fontWeight:600 }}>Press this keyboard shortcut:</p>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10, marginBottom:14 }}>
-        {expected.map((k,i) => (
+    <div style={{ display:'flex', flexDirection:'column', gap:14, alignItems:'center' }}>
+      <p style={{ margin:0, fontSize:13, color:'#6b7280', fontWeight:600 }}>Press the keyboard shortcut:</p>
+      <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+        {expected.map((k,i)=>(
           <React.Fragment key={i}>
-            <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', padding:'10px 18px', border:`2px solid ${st==='ok'?'#22c55e':st==='bad'?'#ef4444':pressed.includes(k)?ATL:'#d1d5db'}`, background:st==='ok'?'#f0fdf4':st==='bad'?'#fef2f2':pressed.includes(k)?'#edeaff':'#fff', fontFamily:'monospace', fontSize:16, fontWeight:800, color:st==='ok'?'#166534':st==='bad'?'#991b1b':pressed.includes(k)?ATL:'#1e1b4b', boxShadow:'0 2px 0 #e5e7eb' }}>
-              {k}
-            </span>
-            {i<expected.length-1&&<span style={{ fontSize:20, fontWeight:700, color:'#9ca3af' }}>+</span>}
+            {i>0&&<span style={{fontSize:12,color:'#9ca3af'}}>+</span>}
+            <span style={{ background:'#1e1b4b', color:'#fff', padding:'8px 14px', fontSize:13, fontWeight:800, fontFamily:'monospace', borderRadius:6, boxShadow:'0 2px 0 rgba(0,0,0,.3)' }}>{k}</span>
           </React.Fragment>
         ))}
       </div>
-      <p style={{ margin:0, fontSize:13, fontWeight:600, color:st==='ok'?'#16a34a':st==='bad'?'#ef4444':'#9ca3af' }}>
-        {st==='ok'?'✓ Perfect!':st==='bad'?`Got: ${pressed.join('+')} — try again`:'Click here first, then press the keys'}
-      </p>
+      {pressed.length>0&&(
+        <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+          <span style={{ fontSize:11, color:'#9ca3af' }}>You pressed:</span>
+          {pressed.map((k,i)=>(
+            <span key={i} style={{ background: st==='ok'?'#22c55e':st==='bad'?'#ef4444':'#6b7280', color:'#fff', padding:'5px 10px', fontSize:12, fontFamily:'monospace', fontWeight:700 }}>{k}</span>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
 const TrueFalse = ({ task, onCorrect, onWrong }) => {
-  const [chosen, setChosen] = useState(null);
-  const [done, setDone]     = useState(false);
-  const stmt        = task.tf_statement||task.question||task.dialog;
-  const correctNorm = (task.correct_answer||'').toLowerCase().trim();
-  const pick = v => { if(done) return; setChosen(v); setDone(true); setTimeout(v===correctNorm?onCorrect:onWrong,700); };
+  const [sel, setSel]   = useState(null);
+  const [done, setDone] = useState(false);
+  const stmt    = task.tf_statement || task.question || '';
+  const correct = (task.correct_answer||'').toString().toLowerCase();
 
-  const border = v => { if(!done) return '#e5e7eb'; if(v===correctNorm) return '#22c55e'; if(v===chosen) return '#ef4444'; return '#e5e7eb'; };
-  const bg     = v => { if(!done) return '#fff'; if(v===correctNorm) return '#f0fdf4'; if(v===chosen) return '#fef2f2'; return '#fff'; };
-  const color  = v => { if(!done) return '#1e1b4b'; if(v===correctNorm) return '#166534'; if(v===chosen) return '#991b1b'; return '#9ca3af'; };
+  const pick = val => {
+    if (done) return;
+    setSel(val); setDone(true);
+    setTimeout(val === correct ? onCorrect : onWrong, 700);
+  };
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-      <div style={{ background:'#f9fafb', border:'1px solid #e5e7eb', padding:'18px 20px', textAlign:'center' }}>
-        <p style={{ margin:0, fontSize:16, fontWeight:600, color:'#1e1b4b', lineHeight:1.6 }}>{stmt}</p>
-      </div>
+      {stmt && <p style={{ margin:0, fontSize:15, fontWeight:600, color:'#1e1b4b', background:'#f9fafb', border:'1px solid #e5e7eb', padding:'14px 16px', lineHeight:1.6 }}>{stmt}</p>}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-        {[{v:'true',label:'True',icon:'✅'},{v:'false',label:'False',icon:'❌'}].map(({v,label,icon})=>(
-          <button key={v} onClick={()=>pick(v)} disabled={done} style={{ padding:'22px 12px', border:`2px solid ${border(v)}`, background:bg(v), cursor:done?'default':'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:8, fontFamily:'system-ui,sans-serif', transition:'border-color .15s' }}>
-            <span style={{ fontSize:30 }}>{icon}</span>
-            <span style={{ fontSize:15, fontWeight:800, color:color(v) }}>{label}</span>
-          </button>
-        ))}
+        {['true','false'].map(v => {
+          const isOk  = done && v===correct;
+          const isBad = done && sel===v && !isOk;
+          return (
+            <button key={v} onClick={() => pick(v)} disabled={done} style={{
+              padding:'16px', border:`2px solid ${isOk?'#22c55e':isBad?'#ef4444':'#e5e7eb'}`,
+              background: isOk?'#f0fdf4':isBad?'#fef2f2':'#fff',
+              cursor: done?'default':'pointer', fontFamily:'system-ui,sans-serif',
+              fontSize:16, fontWeight:800,
+              color: isOk?'#166534':isBad?'#991b1b':'#1e1b4b',
+            }}>
+              {v==='true' ? '✅ True' : '❌ False'}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -730,7 +735,7 @@ const SceneTask = ({ task, onCorrect }) => {
 };
 
 // ══════════════════════════════════════════════════════════════
-// PLAY SCREEN  — better layout, alternating Ram, popup feedback
+// PLAY SCREEN
 // ══════════════════════════════════════════════════════════════
 const TYPE_LABELS = { mcq:'Multiple Choice', type:'Type Answer', fill_blank:'Fill in Blank', keyboard:'Keyboard Shortcut', truefalse:'True / False', dragdrop:'Drag & Drop', match:'Match Pairs', scene:'Help Ram!' };
 const TYPE_ICONS  = { mcq:'🎯', type:'⌨️', fill_blank:'✏️', keyboard:'🔑', truefalse:'✅', dragdrop:'🧩', match:'🔗', scene:'🎬' };
@@ -748,7 +753,7 @@ const PlayScreen = ({ story, chapter, tasks, onComplete, onBack, onLogout }) => 
   const [corrects,  setCorrects]  = useState(0);
   const [tKey,      setTKey]      = useState(0);
   const [attempted, setAttempted] = useState(false);
-  const [popup,     setPopup]     = useState(null); // { type:'correct'|'wrong', msg }
+  const [popup,     setPopup]     = useState(null);
   const popTimer = useRef(null);
   const cur = tasks[idx];
 
@@ -767,11 +772,34 @@ const PlayScreen = ({ story, chapter, tasks, onComplete, onBack, onLogout }) => 
     popTimer.current = setTimeout(() => setPopup(null), 1800);
   };
 
+  // ── Calculate stars based on final corrects ──────────────────
+  const calcStars = (finalCorrects, total) => {
+    if (finalCorrects === total) return 3;
+    if (finalCorrects >= total * 0.7) return 2;
+    if (finalCorrects >= total * 0.4) return 1;
+    return 0;
+  };
+
+  // ── Advance to next task or finish chapter ───────────────────
   const advance = (countAsCorrect) => {
-    const next = idx + 1;
+    const next          = idx + 1;
+    const finalCorrects = corrects + (countAsCorrect ? 1 : 0);
+
     if (next >= tasks.length) {
-      try { api.story.completeChapter(chapter.id, wrongs===0?3:wrongs<=2?2:1); } catch {}
-      onComplete(corrects + (countAsCorrect ? 1 : 0), tasks.length);
+      const stars = calcStars(finalCorrects, tasks.length);
+
+      // Fire-and-forget: call API, capture real XP from response
+      api.story.completeChapter(chapter.id, stars)
+        .then(res => {
+          const xpAwarded = res?.data?.xp_awarded ?? res?.xp_awarded ?? stars * 10;
+          // Sync XP into localStorage so Home.jsx XP card reflects it immediately
+          if (xpAwarded > 0) syncXpToLocal(xpAwarded);
+          onComplete(finalCorrects, tasks.length, xpAwarded);
+        })
+        .catch(() => {
+          // Still complete the screen even if API fails
+          onComplete(finalCorrects, tasks.length, stars * 10);
+        });
     } else {
       setIdx(next);
       setTKey(k => k + 1);
@@ -780,14 +808,14 @@ const PlayScreen = ({ story, chapter, tasks, onComplete, onBack, onLogout }) => 
 
   const handleCorrect = () => {
     setCorrects(c => c + 1);
-    setMood('happy');             // → /thumbs up.png
+    setMood('happy');
     setRamTxt(randFrom(CORRECT_MSGS));
     showPopup('correct', randFrom(CORRECT_MSGS));
     setTimeout(() => advance(true), 1400);
   };
 
   const handleWrong = () => {
-    const w = wrongs + 1; setWrongs(w); setMood('wrong'); // → /confuse.png
+    const w = wrongs + 1; setWrongs(w); setMood('wrong');
     setAttempted(true);
     const msg = randFrom(WRONG_MSGS);
     setRamTxt(w >= 2 ? 'Check the hint below!' : msg);
@@ -806,7 +834,6 @@ const PlayScreen = ({ story, chapter, tasks, onComplete, onBack, onLogout }) => 
       <style>{CSS}</style>
       <Header onLogout={onLogout} />
 
-      {/* Popup */}
       {popup && <FeedbackPopup type={popup.type} msg={popup.msg} />}
 
       {/* Top bar */}
@@ -833,7 +860,6 @@ const PlayScreen = ({ story, chapter, tasks, onComplete, onBack, onLogout }) => 
       {/* Content */}
       <div style={{ maxWidth:640, margin:'0 auto', padding:'24px 20px 60px' }}>
 
-        {/* Ram — alternates left / right each task */}
         <RamCard
           mood={mood}
           dialog={ramTxt}
@@ -895,11 +921,14 @@ const PlayScreen = ({ story, chapter, tasks, onComplete, onBack, onLogout }) => 
 // ══════════════════════════════════════════════════════════════
 // RESULT SCREEN
 // ══════════════════════════════════════════════════════════════
-const ResultScreen = ({ chapter, correct, total, onBack, onRetry, onLogout }) => {
+const ResultScreen = ({ chapter, correct, total, xpAwarded, onBack, onRetry, onLogout }) => {
   const stars  = correct===total?3:correct>=total*.7?2:correct>=total*.4?1:0;
   const labels = ['Keep trying!','Good start!','Well done!','Perfect!'];
   const pct    = total>0?Math.round((correct/total)*100):0;
   const ramImg = stars >= 2 ? RAM_IMGS.correct : stars === 0 ? RAM_IMGS.sad : RAM_IMGS.happy;
+  // Use real XP from API; fall back to stars*10 if for some reason it wasn't passed
+  const displayXp = xpAwarded ?? stars * 10;
+
   return (
     <div style={{ minHeight:'100vh', background:'#f5f5f5', fontFamily:'system-ui,sans-serif' }}>
       <style>{CSS}</style>
@@ -920,14 +949,28 @@ const ResultScreen = ({ chapter, correct, total, onBack, onRetry, onLogout }) =>
           <div style={{ display:'flex', gap:4, justifyContent:'center', marginBottom:18 }}>
             {[1,2,3].map(i=><span key={i} style={{ fontSize:32, opacity:i<=stars?1:.2 }}>⭐</span>)}
           </div>
+
+          {/* Stats — real XP shown */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, marginBottom:20 }}>
-            {[{v:`${correct}/${total}`,l:'Correct'},{v:`+${stars*10}`,l:'XP'},{v:`${pct}%`,l:'Score'}].map(({v,l})=>(
+            {[
+              { v:`${correct}/${total}`, l:'Correct'  },
+              { v:`+${displayXp}`,       l:'XP Earned' },
+              { v:`${pct}%`,             l:'Score'     },
+            ].map(({v,l})=>(
               <div key={l} style={{ background:'#f9fafb', border:'1px solid #e5e7eb', padding:'12px 8px' }}>
-                <p style={{ margin:'0 0 2px', fontSize:20, fontWeight:800, color:'#1e1b4b' }}>{v}</p>
+                <p style={{ margin:'0 0 2px', fontSize:20, fontWeight:800, color: l==='XP Earned'?ATL:'#1e1b4b' }}>{v}</p>
                 <p style={{ margin:0, fontSize:11, color:'#6b7280', fontWeight:600 }}>{l}</p>
               </div>
             ))}
           </div>
+
+          {/* XP skipped notice (replayed chapter) */}
+          {displayXp === 0 && stars > 0 && (
+            <p style={{ margin:'0 0 14px', fontSize:11, color:'#9ca3af' }}>
+              XP already awarded for this chapter today.
+            </p>
+          )}
+
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {stars<3&&<button onClick={onRetry} style={{ background:'#fff', color:ATL, border:`1.5px solid ${ATL}`, padding:'10px', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'system-ui,sans-serif' }}>🔄 Try Again</button>}
             <button onClick={onBack} style={{ background:ATL, color:'#fff', border:'none', padding:'10px', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'system-ui,sans-serif' }}>← Back to Stories</button>
@@ -950,6 +993,7 @@ export default function StoryMode({ user, onBack, onLogout }) {
   const [tasks,    setTasks]    = useState([]);
   const [rc,       setRc]       = useState(0);
   const [rt,       setRt]       = useState(0);
+  const [xp,       setXp]       = useState(0); // ← real XP from API
 
   useEffect(() => { load(); }, []);
 
@@ -985,8 +1029,27 @@ export default function StoryMode({ user, onBack, onLogout }) {
     </div>
   );
 
-  if (screen==='list')   return <StoryHome   stories={stories} onSelectChapter={startChapter} onLogout={onLogout}/>;
-  if (screen==='play')   return <PlayScreen   story={curStory} chapter={curCh} tasks={tasks} onComplete={(c,t)=>{setRc(c);setRt(t);setScreen('result');}} onBack={()=>setScreen('list')} onLogout={onLogout}/>;
-  if (screen==='result') return <ResultScreen chapter={curCh} correct={rc} total={rt} onBack={()=>{load();setScreen('list');}} onRetry={()=>setScreen('play')} onLogout={onLogout}/>;
+  if (screen==='list')   return <StoryHome stories={stories} onSelectChapter={startChapter} onLogout={onLogout}/>;
+  if (screen==='play')   return (
+    <PlayScreen
+      story={curStory}
+      chapter={curCh}
+      tasks={tasks}
+      onComplete={(c, t, earnedXp) => { setRc(c); setRt(t); setXp(earnedXp); setScreen('result'); }}
+      onBack={() => setScreen('list')}
+      onLogout={onLogout}
+    />
+  );
+  if (screen==='result') return (
+    <ResultScreen
+      chapter={curCh}
+      correct={rc}
+      total={rt}
+      xpAwarded={xp}
+      onBack={() => { load(); setScreen('list'); }}
+      onRetry={() => setScreen('play')}
+      onLogout={onLogout}
+    />
+  );
   return null;
 }

@@ -1,34 +1,27 @@
+// backend/src/routes/chat.routes.js
+
 const express = require('express');
 const router = express.Router();
-const { chatWithGemini } = require('../services/groqService'); // ✅ import name
+const { studentAuth } = require('../middleware/student.middleware');
+const {
+  sendMessage,
+  converseForRoadmap,
+  groqDirect,
+  getRoadmap,
+  unlockNextPhase,
+  getChatHistory,
+  getPhaseStatus,
+} = require('../controllers/chatController');
 
-// POST /api/chat/send
-router.post('/send', async (req, res) => {
-  try {
-    const { message, history = [] } = req.body;
-
-    if (!message) {
-      return res.status(400).json({ success: false, message: 'Message is required' });
-    }
-
-    const aiResponse = await chatWithGemini(message, history); // ✅ fixed: was chatWithGroq
-
-    res.json({
-      success: true,
-      message: aiResponse
-    });
-  } catch (error) {
-    console.error('Chat error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'ATL Bot is unavailable right now. Please try again!'
-    });
-  }
-});
-
-// GET /api/chat/history/:userId
-router.get('/history/:userId', async (req, res) => {
-  res.json({ success: true, data: [] });
-});
+// ─── All Chat Routes ──────────────────────────────────────────
+// All routes use your existing studentAuth middleware
+router.post('/send',          studentAuth, sendMessage);
+router.post('/sendMessage',   studentAuth, sendMessage);       // backward compatibility
+router.post('/converse',      studentAuth, converseForRoadmap);
+router.post('/groq',          studentAuth, groqDirect);
+router.get('/roadmap',        studentAuth, getRoadmap);
+router.post('/unlock-phase',  studentAuth, unlockNextPhase);
+router.get('/phase-status',   studentAuth, getPhaseStatus);
+router.get('/history/:sessionId', studentAuth, getChatHistory);
 
 module.exports = router;

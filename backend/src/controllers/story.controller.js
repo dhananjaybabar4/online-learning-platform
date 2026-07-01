@@ -6,6 +6,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// XP per star: 1★=10, 2★=20, 3★=30
+const STAR_XP = { 1: 10, 2: 20, 3: 30 };
+
 // ═══════════════════════════════════════════════════════════════
 // STUDENT
 // ═══════════════════════════════════════════════════════════════
@@ -65,18 +68,56 @@ const getStories = async (req, res) => {
 const completeChapter = async (req, res) => {
   try {
     const { stars = 3 } = req.body;
+    const clampedStars  = Math.max(0, Math.min(3, Number(stars)));
+    const chapterId     = req.params.chapterId;
+    const userId        = req.user.id;
+
+    // ── 1. Save / update story progress ──────────────────────
     const { error } = await supabase.from('story_progress').upsert(
       {
-        user_id:      req.user.id,
-        chapter_id:   req.params.chapterId,
+        user_id:      userId,
+        chapter_id:   chapterId,
         completed:    true,
-        stars:        Math.max(0, Math.min(3, Number(stars))),
+        stars:        clampedStars,
         completed_at: new Date().toISOString(),
       },
       { onConflict: 'user_id,chapter_id' }
     );
     if (error) throw error;
-    res.json({ success: true });
+
+    // ── 2. Award XP — deduped per chapter per 24 h ───────────
+    const xpToAward = STAR_XP[clampedStars] || 0;
+    let   xp_awarded = 0;
+    let   xp_skipped = false;
+
+    if (xpToAward > 0) {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: existing } = await supabase
+        .from('point_transactions')
+        .select('id')
+        .eq('user_id',     userId)
+        .eq('reason',      'story_chapter_completed')
+        .eq('ref_id',      chapterId)
+        .gte('created_at', since)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        xp_skipped = true;
+      } else {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('award_points', {
+          p_user_id:  userId,
+          p_points:   xpToAward,
+          p_reason:   'story_chapter_completed',
+          p_ref_id:   chapterId,
+          p_ref_type: 'story_chapter',
+          p_meta:     { stars: clampedStars },
+        });
+        if (rpcErr) console.error('award_points RPC error:', rpcErr);
+        else xp_awarded = xpToAward;
+      }
+    }
+
+    res.json({ success: true, xp_awarded, xp_skipped });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

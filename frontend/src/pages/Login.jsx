@@ -90,22 +90,24 @@ const Login = ({ setUser }) => {
         // ── LOGIN ──
         const response = await api.auth.login({ email, password });
         if (response.success) {
+          // ✅ FIXED: include streak + longest_streak from response
           const userData = {
-            id:         response.user.id,
-            email:      response.user.email,
-            firstName:  response.user.name?.split(' ')[0]          || response.user.email,
-            lastName:   response.user.name?.split(' ').slice(1).join(' ') || '',
-            name:       response.user.name,
-            role:       response.user.role,
-            avatar_url: response.user.avatar_url,
+            id:             response.user.id,
+            email:          response.user.email,
+            firstName:      response.user.name?.split(' ')[0] || response.user.email,
+            lastName:       response.user.name?.split(' ').slice(1).join(' ') || '',
+            name:           response.user.name,
+            role:           response.user.role,
+            avatar_url:     response.user.avatar_url,
+            streak:         response.user.streak         ?? 0,
+            longest_streak: response.user.longest_streak ?? 0,
           };
-          if (response.session?.access_token)  localStorage.setItem('atl_access_token',   response.session.access_token);
-          if (response.session?.refresh_token) localStorage.setItem('atl_refresh_token',  response.session.refresh_token);
+          if (response.session?.access_token)  localStorage.setItem('atl_access_token',  response.session.access_token);
+          if (response.session?.refresh_token) localStorage.setItem('atl_refresh_token', response.session.refresh_token);
           localStorage.setItem('atl_current_user', JSON.stringify(userData));
           localStorage.setItem('user',             JSON.stringify(userData));
           localStorage.setItem('atl_session',      JSON.stringify(response.session));
           setUser(userData);
-          // ← CHANGED: use redirectAfterLogin instead of hardcoded navigate
           redirectAfterLogin(userData, navigate);
         } else {
           setError(response.error || 'Login failed. Please check your credentials.');
@@ -120,23 +122,25 @@ const Login = ({ setUser }) => {
         });
 
         if (response.success) {
+          // ✅ FIXED: include streak + longest_streak from response
           const userData = {
-            id:         response.user.id,
-            email:      response.user.email,
-            firstName:  response.user.name?.split(' ')[0]          || firstName,
-            lastName:   response.user.name?.split(' ').slice(1).join(' ') || lastName,
-            name:       response.user.name,
-            role:       response.user.role,
-            avatar_url: response.user.avatar_url,
+            id:             response.user.id,
+            email:          response.user.email,
+            firstName:      response.user.name?.split(' ')[0] || firstName,
+            lastName:       response.user.name?.split(' ').slice(1).join(' ') || lastName,
+            name:           response.user.name,
+            role:           response.user.role,
+            avatar_url:     response.user.avatar_url,
+            streak:         response.user.streak         ?? 1,
+            longest_streak: response.user.longest_streak ?? 1,
           };
-          if (response.session?.access_token)  localStorage.setItem('atl_access_token',   response.session.access_token);
-          if (response.session?.refresh_token) localStorage.setItem('atl_refresh_token',  response.session.refresh_token);
+          if (response.session?.access_token)  localStorage.setItem('atl_access_token',  response.session.access_token);
+          if (response.session?.refresh_token) localStorage.setItem('atl_refresh_token', response.session.refresh_token);
           localStorage.setItem('atl_current_user', JSON.stringify(userData));
           localStorage.setItem('user',             JSON.stringify(userData));
           if (response.session) localStorage.setItem('atl_session', JSON.stringify(response.session));
           setUser(userData);
           setSuccessMessage('🎉 Account created! Setting up your profile...');
-          // ← CHANGED: new users always go to onboarding
           setTimeout(() => redirectAfterLogin(userData, navigate), 800);
 
         } else {

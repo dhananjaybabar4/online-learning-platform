@@ -1,14 +1,13 @@
-// src/pages/AuthCallback.jsx — updated to redirect new users to onboarding
+// src/components/student/AuthCallback.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { api } from '../services/api';
+import { api } from '../../services/api';
 
 const AuthCallback = ({ setUser }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [error, setError] = useState('');
 
-  // Check if user has completed onboarding
   const needsOnboarding = (user) => {
     if (!user) return false;
     if (user.onboarding_complete === true) return false;
@@ -44,7 +43,6 @@ const AuthCallback = ({ setUser }) => {
             if (response.user.role === 'ADMIN') {
               navigate('/admin/dashboard', { replace: true });
             } else if (needsOnboarding(response.user)) {
-              // ← NEW: send new users to onboarding
               navigate('/onboarding', { replace: true });
             } else {
               navigate('/dashboard', { replace: true });

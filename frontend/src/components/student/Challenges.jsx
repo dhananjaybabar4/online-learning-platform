@@ -68,7 +68,7 @@ export default function Challenges({ user, onLogout }) {
             ))}
           </div>
           <button onClick={() => { onLogout?.(); navigate('/login'); }}
-            className="bg-white text-[#4d4398] px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-100">
+            className="bg-white text-[#4d4398] px-5 py-2 text-sm font-medium hover:bg-gray-100">
             Logout
           </button>
         </div>
@@ -91,12 +91,12 @@ export default function Challenges({ user, onLogout }) {
         {!loading && challenges.length > 0 && (
           <div className="grid grid-cols-4 gap-3 mb-6">
             {[
-              { label: 'Total',   value: stats.total,  color: 'text-[#4d4398]' },
-              { label: 'Solved',  value: stats.solved, color: 'text-green-600' },
-              { label: 'Attempted', value: stats.total - stats.solved, color: 'text-yellow-600' },
+              { label: 'Total',     value: stats.total,              color: 'text-[#4d4398]' },
+              { label: 'Solved',    value: stats.solved,             color: 'text-green-600' },
+              { label: 'Easy',      value: stats.easy,               color: 'text-green-500' },
               { label: 'Remaining', value: stats.total - stats.solved, color: 'text-gray-500' },
             ].map(s => (
-              <div key={s.label} className="bg-white rounded-xl border border-gray-200 py-3 text-center">
+              <div key={s.label} className="bg-white border border-gray-200 py-3 text-center">
                 <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
               </div>
@@ -105,13 +105,13 @@ export default function Challenges({ user, onLogout }) {
         )}
 
         {/* Filter tabs */}
-        <div className="flex gap-2 mb-5">
+        <div className="flex gap-0 mb-5 border border-gray-200 overflow-hidden w-fit">
           {['all', 'easy', 'medium', 'hard'].map(d => (
             <button key={d} onClick={() => setFilter(d)}
-              className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+              className={`px-4 py-2 text-sm font-semibold transition-colors border-r border-gray-200 last:border-r-0 ${
                 filter === d
                   ? 'bg-[#4d4398] text-white'
-                  : 'bg-white text-gray-500 border border-gray-200 hover:border-[#4d4398]'
+                  : 'bg-white text-gray-500 hover:bg-gray-50'
               }`}>
               {d === 'all' ? `All (${stats.total})` : `${DIFF[d]?.label} (${stats[d]})`}
             </button>
@@ -121,7 +121,7 @@ export default function Challenges({ user, onLogout }) {
         {/* List */}
         {loading && (
           <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#4d4398]" />
+            <div className="animate-spin h-10 w-10 border-b-2 border-[#4d4398]" />
           </div>
         )}
 
@@ -134,46 +134,65 @@ export default function Challenges({ user, onLogout }) {
         )}
 
         {!loading && filtered.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="bg-white border border-gray-200 overflow-hidden">
+            {/* Table header */}
+            <div className="grid grid-cols-[40px_1fr_90px_70px_80px_90px] gap-0 px-4 py-2 bg-gray-50 border-b border-gray-200">
+              <div className="text-xs font-bold text-gray-400 uppercase">#</div>
+              <div className="text-xs font-bold text-gray-400 uppercase">Challenge</div>
+              <div className="text-xs font-bold text-gray-400 uppercase text-center">Difficulty</div>
+              <div className="text-xs font-bold text-gray-400 uppercase text-center">Questions</div>
+              <div className="text-xs font-bold text-gray-400 uppercase text-center">XP</div>
+              <div className="text-xs font-bold text-gray-400 uppercase text-center">Action</div>
+            </div>
+
             {filtered.map((c, i) => {
               const diff    = DIFF[c.difficulty] || DIFF.medium;
               const isSolved = solved.includes(c.id);
               return (
                 <div key={c.id}
-                  className={`flex items-center justify-between px-5 py-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors ${isSolved ? 'opacity-80' : ''}`}>
-                  <div className="flex items-center gap-4">
-                    {/* Index / solved indicator */}
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${
-                      isSolved ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
-                    }`}>
-                      {isSolved ? '✓' : i + 1}
-                    </div>
+                  className={`grid grid-cols-[40px_1fr_90px_70px_80px_90px] gap-0 items-center px-4 py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors ${isSolved ? 'opacity-80' : ''}`}>
 
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-gray-900 text-sm">{c.title}</h3>
-                        {isSolved && (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Solved</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <span className="text-xs text-gray-400 capitalize">{c.topic}</span>
-                        {c.questions_count > 0 && (
-                          <span className="text-xs text-gray-400">{c.questions_count} question{c.questions_count !== 1 ? 's' : ''}</span>
-                        )}
-                      </div>
-                    </div>
+                  {/* Index */}
+                  <div className={`w-7 h-7 flex items-center justify-center text-xs font-black flex-shrink-0 ${
+                    isSolved ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {isSolved ? '✓' : i + 1}
                   </div>
 
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${diff.bg} ${diff.text}`}>
+                  {/* Title + topic */}
+                  <div className="min-w-0 pr-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-gray-900 text-sm truncate">{c.title}</h3>
+                      {isSolved && (
+                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 font-medium">Solved</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 capitalize mt-0.5">{c.topic}</p>
+                  </div>
+
+                  {/* Difficulty */}
+                  <div className="flex justify-center">
+                    <span className={`flex items-center gap-1 px-2 py-0.5 text-xs font-bold ${diff.bg} ${diff.text}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${diff.dot}`} />
                       {diff.label}
                     </span>
-                    <span className="text-xs text-gray-400 font-medium">+{XP[c.difficulty] || 10} XP</span>
+                  </div>
+
+                  {/* Questions count */}
+                  <div className="text-center">
+                    <span className="text-xs text-gray-500 font-medium">{c.questions_count || 0}Q</span>
+                  </div>
+
+                  {/* XP */}
+                  <div className="text-center">
+                    <span className="text-xs text-amber-600 font-bold">+{XP[c.difficulty] || 10} XP</span>
+                  </div>
+
+                  {/* Action */}
+                  <div className="flex justify-center">
                     <button
                       onClick={() => navigate(`/challenges/${c.id}`)}
-                      className={`px-4 py-1.5 text-white text-sm font-semibold rounded-lg transition-colors ${
+                      className={`px-3 py-1.5 text-white text-xs font-bold transition-colors ${
                         isSolved
                           ? 'bg-[#4d4398] hover:bg-[#3e2f7f]'
                           : 'bg-orange-500 hover:bg-orange-600'

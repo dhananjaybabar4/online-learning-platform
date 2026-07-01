@@ -10,9 +10,9 @@ const DIFF = {
   hard:   { bg: 'bg-red-100',    text: 'text-red-700',    dot: 'bg-red-500',    label: 'Hard'   },
 };
 const XP = { easy: 10, medium: 20, hard: 30 };
-const PASS_THRESHOLD = 0.6; // 60% to pass
+const PASS_THRESHOLD = 0.6;
 
-// ── Timer Hook ───────────────────────────────────────────────────────────────
+// ── Timer Hook ────────────────────────────────────────────────────────────────
 function useTimer(initSec, onExpire) {
   const [sec, setSec] = useState(initSec);
   const iv   = useRef(null);
@@ -43,7 +43,7 @@ function useTimer(initSec, onExpire) {
   return { sec, mins, secs, pct, urgent, start, stop, reset };
 }
 
-// ── NavBar ───────────────────────────────────────────────────────────────────
+// ── NavBar ────────────────────────────────────────────────────────────────────
 function NavBar({ onLogout, navigate }) {
   return (
     <div className="bg-[#3e2f7f] shadow-md">
@@ -60,7 +60,7 @@ function NavBar({ onLogout, navigate }) {
           ))}
         </div>
         <button onClick={() => { onLogout?.(); navigate('/login'); }}
-          className="bg-white text-[#4d4398] px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-100">
+          className="bg-white text-[#4d4398] px-5 py-2 text-sm font-medium hover:bg-gray-100">
           Logout
         </button>
       </div>
@@ -68,7 +68,7 @@ function NavBar({ onLogout, navigate }) {
   );
 }
 
-// ── Main Component ───────────────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function ChallengeView({ user, onLogout }) {
   const { id }   = useParams();
   const navigate = useNavigate();
@@ -76,33 +76,29 @@ export default function ChallengeView({ user, onLogout }) {
   const [challenge,  setChallenge]  = useState(null);
   const [questions,  setQuestions]  = useState([]);
   const [loading,    setLoading]    = useState(true);
-  const [phase,      setPhase]      = useState('intro');   // intro | solving | result
+  const [phase,      setPhase]      = useState('intro');
 
-  // Solving state
   const [qIndex,     setQIndex]     = useState(0);
-  const [answers,    setAnswers]    = useState({});        // { [qId]: 'a'|'b'|'c'|'d' }
-  const [submitted,  setSubmitted]  = useState(false);     // current Q submitted?
-  const [score,      setScore]      = useState(null);      // { correct, total } after finish
+  const [answers,    setAnswers]    = useState({});
+  const [submitted,  setSubmitted]  = useState(false);
+  const [score,      setScore]      = useState(null);
 
   const timeLimitSec = challenge ? Math.floor((challenge.time_limit_minutes || 5) * 60) : 300;
 
   const onExpire = useCallback(() => { finishChallenge(true); }, []);
   const timer = useTimer(timeLimitSec, onExpire);
 
-  // ── Fetch challenge + questions ──────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
         const token = localStorage.getItem('atl_access_token') || localStorage.getItem('admin_token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        // Fetch challenge metadata (use admin route as fallback for student view)
         const cRes  = await fetch(`${API_BASE_URL}/challenges/student`, { headers });
         const cData = await cRes.json();
         const found = (cData.challenges || []).find(c => String(c.id) === String(id));
         if (found) setChallenge(found);
 
-        // Fetch questions
         const qRes  = await fetch(`${API_BASE_URL}/challenges/student/${id}/questions`, { headers });
         const qData = await qRes.json();
         setQuestions(qData.questions || []);
@@ -111,33 +107,23 @@ export default function ChallengeView({ user, onLogout }) {
     })();
   }, [id]);
 
-  // ── Start ────────────────────────────────────────────────────────────────
   const startChallenge = () => {
-    setQIndex(0);
-    setAnswers({});
-    setSubmitted(false);
-    setScore(null);
+    setQIndex(0); setAnswers({}); setSubmitted(false); setScore(null);
     setPhase('solving');
     timer.reset(timeLimitSec);
     setTimeout(() => timer.start(), 50);
   };
 
-  // ── Per-question submit ──────────────────────────────────────────────────
-  const submitAnswer = () => {
-    setSubmitted(true);
-  };
+  const submitAnswer = () => setSubmitted(true);
 
-  // ── Next question ────────────────────────────────────────────────────────
   const nextQuestion = () => {
     if (qIndex < questions.length - 1) {
-      setQIndex(q => q + 1);
-      setSubmitted(false);
+      setQIndex(q => q + 1); setSubmitted(false);
     } else {
       finishChallenge(false);
     }
   };
 
-  // ── Finish ───────────────────────────────────────────────────────────────
   const finishChallenge = useCallback(async (timedOut = false) => {
     timer.stop();
     const correct = questions.filter(q => answers[q.id] === q.correct_option).length;
@@ -145,7 +131,6 @@ export default function ChallengeView({ user, onLogout }) {
     setScore({ correct, total, timedOut });
     setPhase('result');
 
-    // Award XP if passed
     if (!timedOut && correct / total >= PASS_THRESHOLD) {
       try {
         const token = localStorage.getItem('atl_access_token') || localStorage.getItem('admin_token');
@@ -161,18 +146,16 @@ export default function ChallengeView({ user, onLogout }) {
     }
   }, [timer, questions, answers, id, challenge]);
 
-  // ── Render helpers ───────────────────────────────────────────────────────
-  const currentQ = questions[qIndex];
-  const diff     = DIFF[challenge?.difficulty] || DIFF.medium;
-  const picked   = answers[currentQ?.id];
+  const currentQ  = questions[qIndex];
+  const diff      = DIFF[challenge?.difficulty] || DIFF.medium;
+  const picked    = answers[currentQ?.id];
   const isCorrect = picked === currentQ?.correct_option;
+  const OPTS      = ['a', 'b', 'c', 'd'];
 
-  const OPTS = ['a', 'b', 'c', 'd'];
-
-  // ── LOADING ──────────────────────────────────────────────────────────────
+  // ── LOADING ───────────────────────────────────────────────────────────────
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4d4398]" />
+      <div className="animate-spin h-12 w-12 border-b-2 border-[#4d4398]" />
     </div>
   );
 
@@ -183,7 +166,7 @@ export default function ChallengeView({ user, onLogout }) {
         <p className="text-5xl">🔧</p>
         <p className="text-lg font-semibold text-gray-700">No questions added yet</p>
         <button onClick={() => navigate('/challenges')}
-          className="px-5 py-2 bg-[#4d4398] text-white rounded-xl text-sm font-semibold">← Back</button>
+          className="px-5 py-2 bg-[#4d4398] text-white text-sm font-semibold">← Back</button>
       </div>
     </div>
   );
@@ -200,14 +183,14 @@ export default function ChallengeView({ user, onLogout }) {
           ← Back to Challenges
         </button>
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white border border-gray-200 overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#3e2f7f] to-[#5e4fa0] px-6 py-6">
+          <div className="bg-[#3e2f7f] px-6 py-6">
             <div className="flex items-start justify-between gap-3">
               <h1 className="text-xl font-black text-white leading-tight">
                 {challenge?.title || 'Challenge'}
               </h1>
-              <span className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${diff.bg} ${diff.text}`}>
+              <span className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold ${diff.bg} ${diff.text}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${diff.dot}`} />
                 {diff.label}
               </span>
@@ -223,9 +206,9 @@ export default function ChallengeView({ user, onLogout }) {
               {[
                 { icon: '❓', label: 'Questions', value: questions.length },
                 { icon: '⏱', label: 'Time Limit', value: `${challenge?.time_limit_minutes || 5}m` },
-                { icon: '⭐', label: 'XP Reward', value: `+${XP[challenge?.difficulty] || 10}` },
+                { icon: '⭐', label: 'XP Reward',  value: `+${XP[challenge?.difficulty] || 10}` },
               ].map(s => (
-                <div key={s.label} className="text-center bg-gray-50 rounded-xl py-3">
+                <div key={s.label} className="text-center bg-gray-50 border border-gray-100 py-3">
                   <p className="text-lg">{s.icon}</p>
                   <p className="text-lg font-black text-gray-800">{s.value}</p>
                   <p className="text-xs text-gray-400">{s.label}</p>
@@ -237,14 +220,14 @@ export default function ChallengeView({ user, onLogout }) {
             {challenge?.topic && (
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Topic</span>
-                <span className="px-2.5 py-0.5 bg-[#ede9fe] text-[#4d4398] rounded-full text-xs font-semibold capitalize">
+                <span className="px-2 py-0.5 bg-[#ede9fe] text-[#4d4398] text-xs font-semibold capitalize">
                   {challenge.topic}
                 </span>
               </div>
             )}
 
             {/* Rules */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800 space-y-1">
+            <div className="bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800 space-y-1">
               <p className="font-bold mb-1">📋 Rules</p>
               <p>• Answer all {questions.length} questions before time runs out</p>
               <p>• Score ≥ 60% to earn XP</p>
@@ -253,7 +236,7 @@ export default function ChallengeView({ user, onLogout }) {
             </div>
 
             <button onClick={startChallenge}
-              className="w-full py-4 bg-orange-500 hover:bg-orange-600 active:scale-[0.99] text-white rounded-xl font-black text-base shadow-lg shadow-orange-200 transition-all">
+              className="w-full py-4 bg-orange-500 hover:bg-orange-600 active:scale-[0.99] text-white font-black text-base transition-all">
               🚀 Start Challenge
             </button>
           </div>
@@ -272,13 +255,12 @@ export default function ChallengeView({ user, onLogout }) {
       {/* Timer bar */}
       <div className={`sticky top-0 z-40 transition-colors ${timer.urgent ? 'bg-red-600' : 'bg-[#3e2f7f]'}`}>
         <div className="max-w-2xl mx-auto px-4 h-12 flex items-center justify-between">
-          {/* Progress dots */}
           <div className="flex items-center gap-1.5">
             {questions.map((q, i) => (
               <div key={q.id}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  i < qIndex           ? 'bg-green-400'
-                  : i === qIndex       ? 'bg-white scale-125'
+                className={`w-2 h-2 transition-all ${
+                  i < qIndex     ? 'bg-green-400'
+                  : i === qIndex ? 'bg-white scale-125'
                   : 'bg-white/30'
                 }`}
               />
@@ -287,12 +269,10 @@ export default function ChallengeView({ user, onLogout }) {
               {qIndex + 1}/{questions.length}
             </span>
           </div>
-
           <span className={`font-mono text-lg font-black text-white ${timer.urgent ? 'animate-pulse' : ''}`}>
             ⏱ {timer.mins}:{timer.secs}
           </span>
         </div>
-        {/* Progress bar */}
         <div className="h-0.5 bg-white/20">
           <div className={`h-full transition-all duration-1000 ${timer.urgent ? 'bg-yellow-300' : 'bg-white/60'}`}
             style={{ width: `${timer.pct}%` }} />
@@ -300,11 +280,10 @@ export default function ChallengeView({ user, onLogout }) {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-6 w-full space-y-4">
-
         {/* Question card */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <div className="bg-white border border-gray-200 p-6">
           <div className="flex items-center gap-2 mb-4">
-            <span className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${diff.bg} ${diff.text}`}>
+            <span className={`flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-bold ${diff.bg} ${diff.text}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${diff.dot}`} />
               {diff.label}
             </span>
@@ -320,15 +299,15 @@ export default function ChallengeView({ user, onLogout }) {
           {(currentQ.example_input || currentQ.example_output) && (
             <div className="flex gap-3 mb-4 flex-wrap">
               {currentQ.example_input && (
-                <div className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl p-3">
+                <div className="flex-1 min-w-0 bg-gray-900 border border-gray-700 p-3">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Input</p>
-                  <code className="text-sm text-gray-700 font-mono">{currentQ.example_input}</code>
+                  <code className="text-sm text-green-400 font-mono whitespace-pre">{currentQ.example_input}</code>
                 </div>
               )}
               {currentQ.example_output && (
-                <div className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl p-3">
+                <div className="flex-1 min-w-0 bg-gray-900 border border-gray-700 p-3">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Output</p>
-                  <code className="text-sm text-gray-700 font-mono">{currentQ.example_output}</code>
+                  <code className="text-sm text-yellow-400 font-mono whitespace-pre">{currentQ.example_output}</code>
                 </div>
               )}
             </div>
@@ -340,14 +319,14 @@ export default function ChallengeView({ user, onLogout }) {
               const optText = currentQ[`option_${opt}`];
               if (!optText) return null;
 
-              const isPicked  = picked === opt;
-              const isRight   = opt === currentQ.correct_option;
+              const isPicked = picked === opt;
+              const isRight  = opt === currentQ.correct_option;
 
-              let classes = 'border-gray-100 hover:border-[#4d4398]/30 bg-white';
+              let classes = 'border-gray-200 hover:border-[#4d4398]/40 bg-white';
               if (submitted) {
-                if (isRight)               classes = 'border-green-400 bg-green-50';
+                if (isRight)                   classes = 'border-green-400 bg-green-50';
                 else if (isPicked && !isRight) classes = 'border-red-400 bg-red-50';
-                else                       classes = 'border-gray-100 bg-white opacity-60';
+                else                           classes = 'border-gray-100 bg-white opacity-50';
               } else if (isPicked) {
                 classes = 'border-[#4d4398] bg-[#4d4398]/5';
               }
@@ -356,16 +335,16 @@ export default function ChallengeView({ user, onLogout }) {
                 <button key={opt}
                   disabled={submitted}
                   onClick={() => setAnswers(a => ({ ...a, [currentQ.id]: opt }))}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${classes}`}>
-                  <span className={`w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center text-xs font-black ${
-                    submitted && isRight              ? 'bg-green-500 text-white'
+                  className={`w-full flex items-center gap-3 px-4 py-3 border-2 text-left transition-all ${classes}`}>
+                  <span className={`w-7 h-7 flex-shrink-0 flex items-center justify-center text-xs font-black ${
+                    submitted && isRight               ? 'bg-green-500 text-white'
                     : submitted && isPicked && !isRight ? 'bg-red-500 text-white'
-                    : isPicked                        ? 'bg-[#4d4398] text-white'
+                    : isPicked                         ? 'bg-[#4d4398] text-white'
                     : 'bg-gray-100 text-gray-500'
                   }`}>
                     {submitted && isRight ? '✓' : submitted && isPicked && !isRight ? '✗' : opt.toUpperCase()}
                   </span>
-                  <span className={`text-sm font-medium ${
+                  <span className={`text-sm font-medium font-mono ${
                     submitted && isRight    ? 'text-green-700'
                     : submitted && isPicked ? 'text-red-700'
                     : isPicked              ? 'text-[#4d4398]'
@@ -378,7 +357,7 @@ export default function ChallengeView({ user, onLogout }) {
 
           {/* Explanation */}
           {submitted && currentQ.explanation && (
-            <div className="mt-4 p-3 bg-purple-50 border border-purple-100 rounded-xl">
+            <div className="mt-4 p-3 bg-purple-50 border border-purple-100">
               <p className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-1">💡 Explanation</p>
               <p className="text-sm text-purple-700">{currentQ.explanation}</p>
             </div>
@@ -387,16 +366,13 @@ export default function ChallengeView({ user, onLogout }) {
 
         {/* Action button */}
         {!submitted ? (
-          <button
-            onClick={submitAnswer}
-            disabled={!picked}
-            className="w-full py-4 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.99] text-white rounded-xl font-black text-base shadow-lg shadow-orange-200 transition-all">
+          <button onClick={submitAnswer} disabled={!picked}
+            className="w-full py-4 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.99] text-white font-black text-base transition-all">
             ✅ Submit Answer
           </button>
         ) : (
-          <button
-            onClick={nextQuestion}
-            className={`w-full py-4 rounded-xl font-black text-base text-white shadow-md active:scale-[0.99] transition-all ${
+          <button onClick={nextQuestion}
+            className={`w-full py-4 font-black text-base text-white active:scale-[0.99] transition-all ${
               isCorrect ? 'bg-green-500 hover:bg-green-600' : 'bg-[#4d4398] hover:bg-[#3e2f7f]'
             }`}>
             {qIndex < questions.length - 1
@@ -413,27 +389,27 @@ export default function ChallengeView({ user, onLogout }) {
   // RESULT
   // ══════════════════════════════════════════════════════════════════════════
   if (phase === 'result' && score !== null) {
-    const pct     = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
-    const passed  = !score.timedOut && pct >= 60;
+    const pct      = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
+    const passed   = !score.timedOut && pct >= 60;
     const xpEarned = passed ? (XP[challenge?.difficulty] || 10) : 0;
 
     return (
       <div className="min-h-screen bg-gray-50">
         <NavBar onLogout={onLogout} navigate={navigate} />
         <div className="max-w-md mx-auto px-4 py-12">
-          <div className={`rounded-3xl border-2 shadow-xl overflow-hidden ${passed ? 'border-green-300' : 'border-red-300'}`}>
+          <div className={`border-2 overflow-hidden ${passed ? 'border-green-400' : 'border-red-400'}`}>
             {/* Result header */}
-            <div className={`px-8 py-10 flex flex-col items-center text-center ${
+            <div className={`px-8 py-8 flex flex-col items-center text-center ${
               passed
-                ? 'bg-gradient-to-br from-green-500 to-emerald-600'
+                ? 'bg-green-500'
                 : score.timedOut
-                  ? 'bg-gradient-to-br from-orange-500 to-red-500'
-                  : 'bg-gradient-to-br from-red-500 to-rose-600'
+                  ? 'bg-orange-500'
+                  : 'bg-red-500'
             }`}>
-              <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center text-5xl mb-4">
+              <div className="w-16 h-16 bg-white/20 flex items-center justify-center text-4xl mb-3">
                 {passed ? '🏆' : score.timedOut ? '⏰' : '😓'}
               </div>
-              <h1 className="text-3xl font-black text-white mb-1">
+              <h1 className="text-2xl font-black text-white mb-1">
                 {passed ? 'Challenge Passed!' : score.timedOut ? "Time's Up!" : 'Try Again'}
               </h1>
               <p className="text-white/80 text-sm">
@@ -448,15 +424,15 @@ export default function ChallengeView({ user, onLogout }) {
             <div className="bg-white px-8 py-6">
               {/* Score breakdown */}
               <div className="grid grid-cols-3 gap-3 mb-5">
-                <div className="text-center bg-gray-50 rounded-xl py-3">
+                <div className="text-center bg-gray-50 border border-gray-100 py-3">
                   <p className="text-2xl font-black text-gray-800">{score.correct}/{score.total}</p>
                   <p className="text-xs text-gray-400">Correct</p>
                 </div>
-                <div className="text-center bg-gray-50 rounded-xl py-3">
+                <div className="text-center bg-gray-50 border border-gray-100 py-3">
                   <p className={`text-2xl font-black ${pct >= 60 ? 'text-green-600' : 'text-red-500'}`}>{pct}%</p>
                   <p className="text-xs text-gray-400">Score</p>
                 </div>
-                <div className="text-center bg-gray-50 rounded-xl py-3">
+                <div className="text-center bg-gray-50 border border-gray-100 py-3">
                   <p className={`text-2xl font-black ${passed ? 'text-yellow-500' : 'text-gray-400'}`}>
                     {passed ? `+${xpEarned}` : '—'}
                   </p>
@@ -474,10 +450,10 @@ export default function ChallengeView({ user, onLogout }) {
                       const correct = given === q.correct_option;
                       return (
                         <div key={q.id}
-                          className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border text-sm ${
+                          className={`flex items-start gap-3 px-3 py-2.5 border text-sm ${
                             correct ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'
                           }`}>
-                          <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-black mt-0.5 ${
+                          <span className={`flex-shrink-0 w-5 h-5 flex items-center justify-center text-xs font-black mt-0.5 ${
                             correct ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
                           }`}>{correct ? '✓' : '✗'}</span>
                           <div className="flex-1 min-w-0">
@@ -485,7 +461,7 @@ export default function ChallengeView({ user, onLogout }) {
                               Q{i + 1}. {q.question_text}
                             </p>
                             {!correct && (
-                              <p className="text-xs text-green-700 mt-0.5">
+                              <p className="text-xs text-green-700 mt-0.5 font-mono">
                                 Correct: <span className="font-bold">{q.correct_option?.toUpperCase()}. {q[`option_${q.correct_option}`]}</span>
                               </p>
                             )}
@@ -499,13 +475,13 @@ export default function ChallengeView({ user, onLogout }) {
 
               <div className="flex flex-col gap-3">
                 <button onClick={startChallenge}
-                  className={`w-full py-3.5 rounded-xl font-black text-base text-white shadow-md transition-all active:scale-[0.99] ${
+                  className={`w-full py-3.5 font-black text-base text-white transition-all active:scale-[0.99] ${
                     passed ? 'bg-[#4d4398] hover:bg-[#3e2f7f]' : 'bg-orange-500 hover:bg-orange-600'
                   }`}>
                   {passed ? '🔁 Practice Again' : '🔄 Retry'}
                 </button>
                 <button onClick={() => navigate('/challenges')}
-                  className="w-full py-3.5 rounded-xl text-sm font-semibold text-gray-500 border border-gray-200 hover:bg-gray-50">
+                  className="w-full py-3.5 text-sm font-semibold text-gray-500 border border-gray-200 hover:bg-gray-50">
                   ← All Challenges
                 </button>
               </div>

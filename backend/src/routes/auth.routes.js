@@ -1,15 +1,14 @@
-// backend/src/routes/auth.routes.js - FIXED VERSION
+// backend/src/routes/auth.routes.js - COMPLETE FIXED VERSION
 const express = require('express');
 const { supabase, supabaseAdmin } = require('../config/supabase');
 
 const router = express.Router();
 
-// Registration
+// ==================== REGISTRATION ====================
 router.post('/register', async (req, res) => {
   try {
     const { email, password, name, firstName, lastName } = req.body;
 
-    // Handle both formats
     let fullName;
     if (firstName && lastName) {
       fullName = `${firstName} ${lastName}`.trim();
@@ -20,9 +19,7 @@ router.post('/register', async (req, res) => {
     }
 
     console.log('📝 Registration attempt for:', email);
-    console.log('   Name:', fullName);
 
-    // ✅ STEP 0: Check if user already exists in database FIRST
     const { data: existingDbUser } = await supabaseAdmin
       .from('users')
       .select('*')
@@ -39,7 +36,6 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Step 1: Create auth user directly using admin
     const { data: authData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
       password: password,
@@ -51,92 +47,8 @@ router.post('/register', async (req, res) => {
       }
     });
 
-    // If auth user creation fails
     if (signUpError) {
       console.error('❌ Auth signup error:', signUpError);
-
-      // If user already exists in auth (but not in DB - orphaned user)
-      if (signUpError.message?.includes('already') || signUpError.code === '23505') {
-        console.log('⚠️ User exists in Auth but not in DB (orphaned user), cleaning up...');
-        
-        try {
-          // Get the auth user
-          const { data: authUserData } = await supabaseAdmin.auth.admin.listUsers();
-          const orphanedUser = authUserData.users.find(u => u.email === email);
-          
-          if (orphanedUser) {
-            // Delete the orphaned auth user
-            await supabaseAdmin.auth.admin.deleteUser(orphanedUser.id);
-            console.log('🧹 Deleted orphaned auth user');
-            
-            // Wait a moment
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            // Retry creating the user
-            const { data: retryAuthData, error: retryError } = await supabaseAdmin.auth.admin.createUser({
-              email: email,
-              password: password,
-              email_confirm: true,
-              user_metadata: {
-                name: fullName,
-                firstName: firstName || fullName.split(' ')[0],
-                lastName: lastName || fullName.split(' ').slice(1).join(' ')
-              }
-            });
-
-            if (retryError || !retryAuthData?.user) {
-              console.error('❌ Retry failed:', retryError);
-              return res.json({
-                success: false,
-                error: 'Registration failed. Please try again.'
-              });
-            }
-
-            // Create DB profile with retried auth user
-            const { data: retryUserData, error: retryDbError } = await supabaseAdmin
-              .from('users')
-              .insert([{
-                id: retryAuthData.user.id,
-                email: email,
-                name: fullName,
-                role: 'STUDENT',
-                auth_method: 'email',
-                status: 'active',
-                created_at: new Date().toISOString()
-              }])
-              .select()
-              .single();
-
-            if (retryDbError) {
-              console.error('❌ DB insert failed after retry:', retryDbError);
-              await supabaseAdmin.auth.admin.deleteUser(retryAuthData.user.id);
-              return res.json({
-                success: false,
-                error: 'Registration failed. Please try again.'
-              });
-            }
-
-            // Create session
-            const { data: retrySession } = await supabase.auth.signInWithPassword({ email, password });
-
-            console.log('✅ Registration successful after cleanup!');
-            return res.json({
-              success: true,
-              message: 'Account created successfully! 🎉',
-              user: {
-                id: retryUserData.id,
-                email: retryUserData.email,
-                name: retryUserData.name,
-                role: retryUserData.role
-              },
-              session: retrySession?.session
-            });
-          }
-        } catch (cleanupError) {
-          console.error('❌ Cleanup failed:', cleanupError);
-        }
-      }
-
       return res.json({
         success: false,
         error: signUpError.message || 'Registration failed'
@@ -153,7 +65,6 @@ router.post('/register', async (req, res) => {
 
     console.log('✅ Auth user created:', authData.user.id);
 
-    // Step 2: Create database profile
     const { data: userData, error: dbError } = await supabaseAdmin
       .from('users')
       .insert([{
@@ -170,53 +81,53 @@ router.post('/register', async (req, res) => {
 
     if (dbError) {
       console.error('❌ Database insert error:', dbError);
-
-      // ✅ NEW: Check if it's a duplicate email error
-      if (dbError.code === '23505' || dbError.message?.includes('duplicate') || dbError.message?.includes('unique')) {
-        console.log('⚠️ Duplicate email detected in database');
-        
-        // Cleanup auth user
-        try {
-          await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-          console.log('🧹 Cleaned up auth user');
-        } catch (cleanupError) {
-          console.error('❌ Cleanup failed:', cleanupError);
-        }
-        
-        return res.json({
-          success: false,
-          error: 'An account with this email already exists. Please login instead.',
-          errorCode: 'USER_EXISTS',
-          shouldRedirectToLogin: true
-        });
-      }
-
-      // Other database errors
       try {
         await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-        console.log('🧹 Cleaned up auth user after DB failure');
-      } catch (cleanupError) {
-        console.error('❌ Cleanup failed:', cleanupError);
+      } catch (e) {
+        console.error('❌ Cleanup failed:', e);
       }
-
       return res.json({
         success: false,
         error: 'Registration failed. Please try again.'
       });
     }
 
-    console.log('✅ Registration successful!');
-    console.log('   User ID:', userData.id);
-    console.log('   Email:', userData.email);
-    console.log('   Name:', userData.name);
+    console.log('✅ User profile created!');
 
-    // Step 3: Create session for the new user
+    // ✅ CRITICAL: Initialize user_points with streak=1
+    const today = new Date().toISOString().split('T')[0];
+    const { data: pointsData, error: pointsError } = await supabaseAdmin
+      .from('user_points')
+      .insert([{
+        user_id: userData.id,
+        points: 0,
+        streak: 1,
+        longest_streak: 1,
+        last_activity_date: today,
+        updated_at: new Date().toISOString()
+      }])
+      .select()
+      .single();
+
+    if (pointsError) {
+      console.error('❌ Failed to create user_points:', pointsError.message);
+      console.error('   Code:', pointsError.code);
+      console.error('   Details:', pointsError.details);
+    } else {
+      console.log('✅ user_points created:', {
+        streak: pointsData.streak,
+        longest_streak: pointsData.longest_streak,
+        last_activity_date: pointsData.last_activity_date
+      });
+    }
+
     const { data: sessionData } = await supabase.auth.signInWithPassword({
       email,
       password
     });
 
-    // Return success with session
+    console.log('✅ Registration complete!');
+
     return res.json({
       success: true,
       message: 'Account created successfully! 🎉',
@@ -224,7 +135,9 @@ router.post('/register', async (req, res) => {
         id: userData.id,
         email: userData.email,
         name: userData.name,
-        role: userData.role
+        role: userData.role,
+        streak: 1,
+        longest_streak: 1
       },
       session: sessionData?.session
     });
@@ -238,14 +151,13 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Login
+// ==================== LOGIN ====================
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-
     console.log('🔐 Login attempt for:', email);
 
-    // Sign in with Supabase
+    // Sign in with Supabase Auth
     const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -259,7 +171,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Get user profile using ADMIN client
+    // Get user profile
     const { data: userData, error: dbError } = await supabaseAdmin
       .from('users')
       .select('*')
@@ -274,7 +186,117 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    console.log('✅ Login successful for:', email);
+    console.log('✅ Auth verified for:', userData.name);
+
+    // ==================== STREAK UPDATE ====================
+    let streak = 0;
+    let longestStreak = 0;
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      console.log('📊 Checking streak for user:', userData.id);
+
+      // Get current user_points record
+      const { data: pointsData, error: pointsError } = await supabaseAdmin
+        .from('user_points')
+        .select('*')
+        .eq('user_id', userData.id)
+        .maybeSingle();
+
+      if (pointsError && pointsError.code !== 'PGRST116') {
+        console.error('⚠️ Error fetching user_points:', pointsError.message);
+        throw pointsError;
+      }
+
+      if (!pointsData) {
+        // First login - create record with streak 1
+        console.log('🆕 No user_points found - creating with streak=1');
+        
+        const { data: newPoints, error: insertError } = await supabaseAdmin
+          .from('user_points')
+          .insert([{
+            user_id: userData.id,
+            points: 0,
+            streak: 1,
+            longest_streak: 1,
+            last_activity_date: today,
+            updated_at: new Date().toISOString()
+          }])
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('❌ Failed to create user_points on login:', insertError.message);
+          streak = 1;
+          longestStreak = 1;
+        } else {
+          streak = newPoints.streak;
+          longestStreak = newPoints.longest_streak;
+          console.log('✅ user_points created on login: streak=1');
+        }
+      } else {
+        // User exists - calculate streak
+        const lastActivityDate = pointsData.last_activity_date;
+        console.log('📅 Existing record found:');
+        console.log('   Last activity:', lastActivityDate);
+        console.log('   Current streak:', pointsData.streak);
+        console.log('   Today:', today);
+
+        if (!lastActivityDate) {
+          // NULL last_activity_date - first time
+          console.log('ℹ️ last_activity_date is NULL - setting to 1');
+          streak = 1;
+          longestStreak = Math.max(1, pointsData.longest_streak || 1);
+        } else {
+          const lastDate = new Date(lastActivityDate + 'T00:00:00Z');
+          const todayDate = new Date(today + 'T00:00:00Z');
+          const daysDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+
+          console.log(`   Days diff: ${daysDiff}`);
+
+          if (daysDiff === 0) {
+            // Same day
+            streak = pointsData.streak || 1;
+            longestStreak = pointsData.longest_streak || 1;
+            console.log('📌 Same day - streak unchanged:', streak);
+          } else if (daysDiff === 1) {
+            // Consecutive day
+            streak = (pointsData.streak || 1) + 1;
+            longestStreak = Math.max(streak, pointsData.longest_streak || 1);
+            console.log(`✅ Consecutive day! Streak: ${pointsData.streak} → ${streak}`);
+          } else {
+            // Gap
+            streak = 1;
+            longestStreak = Math.max(1, pointsData.longest_streak || 1);
+            console.log(`⚠️ Gap of ${daysDiff} days. Streak reset to 1`);
+          }
+        }
+
+        // Update user_points
+        const { error: updateError } = await supabaseAdmin
+          .from('user_points')
+          .update({
+            streak: streak,
+            longest_streak: longestStreak,
+            last_activity_date: today,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', userData.id);
+
+        if (updateError) {
+          console.error('⚠️ Failed to update user_points:', updateError.message);
+        } else {
+          console.log(`✅ user_points updated: streak=${streak}, longest=${longestStreak}`);
+        }
+      }
+    } catch (streakError) {
+      console.error('⚠️ Streak calculation failed:', streakError.message);
+      streak = 0;
+      longestStreak = 0;
+    }
+
+    console.log('✅ Login successful!');
+    console.log(`   Streak: ${streak}, Longest: ${longestStreak}`);
 
     return res.json({
       success: true,
@@ -283,7 +305,9 @@ router.post('/login', async (req, res) => {
         email: userData.email,
         name: userData.name,
         role: userData.role,
-        avatar_url: userData.avatar_url
+        avatar_url: userData.avatar_url,
+        streak: streak,
+        longest_streak: longestStreak
       },
       session: authData.session
     });
@@ -297,15 +321,13 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Logout
+// ==================== LOGOUT ====================
 router.post('/logout', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
-    
     if (token) {
       await supabase.auth.signOut();
     }
-
     res.json({
       success: true,
       message: 'Logged out successfully'
@@ -319,7 +341,7 @@ router.post('/logout', async (req, res) => {
   }
 });
 
-// Google OAuth
+// ==================== GOOGLE OAUTH ====================
 router.post('/google', async (req, res) => {
   try {
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -328,9 +350,7 @@ router.post('/google', async (req, res) => {
         redirectTo: 'http://localhost:5173/auth/callback'
       }
     });
-
     if (error) throw error;
-
     res.json({
       success: true,
       url: data.url
@@ -344,7 +364,7 @@ router.post('/google', async (req, res) => {
   }
 });
 
-// ✅✅✅ CRITICAL FIX: Handle OAuth Callback - CHECK EMAIL FIRST, NOT ID ✅✅✅
+// ==================== OAUTH CALLBACK ====================
 router.post('/callback', async (req, res) => {
   try {
     const { access_token, refresh_token } = req.body;
@@ -358,7 +378,6 @@ router.post('/callback', async (req, res) => {
       });
     }
 
-    // Get user from token
     const { data: { user }, error: userError } = await supabase.auth.getUser(access_token);
 
     if (userError || !user) {
@@ -370,15 +389,12 @@ router.post('/callback', async (req, res) => {
     }
 
     console.log('✅ User authenticated via Google:', user.email);
-    console.log('   Google Auth ID:', user.id);
 
-    // ============================================================================
-    // 🔑 KEY FIX: Check by EMAIL, not ID!
-    // ============================================================================
+    // Check by EMAIL
     const { data: existingUser, error: fetchError } = await supabaseAdmin
       .from('users')
       .select('*')
-      .eq('email', user.email)  // 👈👈👈 CHECK BY EMAIL!
+      .eq('email', user.email)
       .maybeSingle();
 
     if (fetchError && fetchError.code !== 'PGRST116') {
@@ -392,24 +408,15 @@ router.post('/callback', async (req, res) => {
     let finalUserData;
 
     if (existingUser) {
-      // ============================================================================
-      // USER EXISTS: Update to "both", don't create new row!
-      // ============================================================================
       console.log('✅ Existing user found!');
-      console.log('   Email:', existingUser.email);
-      console.log('   Existing ID in DB:', existingUser.id);
-      console.log('   Current auth_method:', existingUser.auth_method);
-      console.log('   Google gave us ID:', user.id);
-      console.log('   → Will UPDATE existing row (not create new)');
-      
       const { data: updatedUser, error: updateError } = await supabaseAdmin
         .from('users')
         .update({
-          auth_method: 'both',  // Can now use email OR Google
+          auth_method: 'both',
           avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || existingUser.avatar_url,
           updated_at: new Date().toISOString()
         })
-        .eq('email', user.email)  // 👈👈👈 UPDATE BY EMAIL!
+        .eq('email', user.email)
         .select()
         .single();
       
@@ -419,16 +426,9 @@ router.post('/callback', async (req, res) => {
       } else {
         finalUserData = updatedUser;
         console.log('✅ Updated auth_method to "both"');
-        console.log('   ID stayed the same:', updatedUser.id);
       }
-      
     } else {
-      // ============================================================================
-      // NEW USER: First time seeing this email
-      // ============================================================================
-      console.log('📝 Creating NEW user (first time with this email)');
-      console.log('   Email:', user.email);
-      console.log('   Google Auth ID:', user.id);
+      console.log('📝 Creating NEW user from Google login');
 
       const { data: newUser, error: insertError } = await supabaseAdmin
         .from('users')
@@ -448,8 +448,6 @@ router.post('/callback', async (req, res) => {
 
       if (insertError) {
         console.error('❌ Failed to create user:', insertError);
-        
-        // Check if another request created it
         const { data: recheckUser } = await supabaseAdmin
           .from('users')
           .select('*')
@@ -471,10 +469,93 @@ router.post('/callback', async (req, res) => {
       }
     }
 
+    // ==================== STREAK UPDATE FOR OAUTH ====================
+    let streak = 0;
+    let longestStreak = 0;
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      console.log('📊 Checking streak for OAuth user...');
+
+      const { data: pointsData, error: pointsError } = await supabaseAdmin
+        .from('user_points')
+        .select('*')
+        .eq('user_id', finalUserData.id)
+        .maybeSingle();
+
+      if (pointsError && pointsError.code !== 'PGRST116') {
+        throw pointsError;
+      }
+
+      if (!pointsData) {
+        console.log('🆕 Creating first user_points for OAuth - streak=1');
+        const { data: newPoints, error: insertError } = await supabaseAdmin
+          .from('user_points')
+          .insert([{
+            user_id: finalUserData.id,
+            points: 0,
+            streak: 1,
+            longest_streak: 1,
+            last_activity_date: today,
+            updated_at: new Date().toISOString()
+          }])
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('❌ Failed to create user_points:', insertError.message);
+          streak = 1;
+          longestStreak = 1;
+        } else {
+          streak = newPoints.streak;
+          longestStreak = newPoints.longest_streak;
+          console.log('✅ OAuth user_points created');
+        }
+      } else {
+        const lastActivityDate = pointsData.last_activity_date;
+        
+        if (!lastActivityDate) {
+          streak = 1;
+          longestStreak = Math.max(1, pointsData.longest_streak || 1);
+        } else {
+          const lastDate = new Date(lastActivityDate + 'T00:00:00Z');
+          const todayDate = new Date(today + 'T00:00:00Z');
+          const daysDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+
+          if (daysDiff === 0) {
+            streak = pointsData.streak || 1;
+            longestStreak = pointsData.longest_streak || 1;
+          } else if (daysDiff === 1) {
+            streak = (pointsData.streak || 1) + 1;
+            longestStreak = Math.max(streak, pointsData.longest_streak || 1);
+          } else {
+            streak = 1;
+            longestStreak = Math.max(1, pointsData.longest_streak || 1);
+          }
+        }
+
+        const { error: updateError } = await supabaseAdmin
+          .from('user_points')
+          .update({
+            streak: streak,
+            longest_streak: longestStreak,
+            last_activity_date: today,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', finalUserData.id);
+
+        if (updateError) {
+          console.error('⚠️ Failed to update user_points:', updateError.message);
+        }
+      }
+    } catch (streakError) {
+      console.error('⚠️ OAuth streak calculation failed:', streakError.message);
+      streak = 0;
+      longestStreak = 0;
+    }
+
     console.log('✅ OAuth callback successful!');
-    console.log('   Final ID in DB:', finalUserData.id);
-    console.log('   Final email:', finalUserData.email);
-    console.log('   Final auth_method:', finalUserData.auth_method);
+    console.log(`   Streak: ${streak}, Longest: ${longestStreak}`);
 
     return res.json({
       success: true,
@@ -483,7 +564,9 @@ router.post('/callback', async (req, res) => {
         email: finalUserData.email,
         name: finalUserData.name,
         role: finalUserData.role,
-        avatar_url: finalUserData.avatar_url
+        avatar_url: finalUserData.avatar_url,
+        streak: streak,
+        longest_streak: longestStreak
       },
       session: {
         access_token,
@@ -499,4 +582,5 @@ router.post('/callback', async (req, res) => {
     });
   }
 });
+
 module.exports = router;

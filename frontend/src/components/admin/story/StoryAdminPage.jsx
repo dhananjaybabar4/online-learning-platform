@@ -806,5 +806,10 @@ export function ChaptersPage() {
   );
 }
 
-// Default export — just StoriesPage (used if someone imports default)
+/* ════════════════════════════════════════════════════════════════
+   EXPORTS — both pages exported as named exports
+════════════════════════════════════════════════════════════════ */
+
+
+// Default export — StoriesPage (used if someone imports default)
 export default StoriesPage;

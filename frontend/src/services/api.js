@@ -964,14 +964,19 @@ export const storyAPI = {
 };
 
 // ============================================
-// CHAT APIs
+// CHAT APIs — COMPLETE WITH ALL NEW METHODS
 // ============================================
 export const chatAPI = {
-  sendMessage: async (data) => {
+  /**
+   * Send a regular chat message to ATL Bot (post-roadmap)
+   * POST /chat/send
+   * @param {Object} params - { message, sessionId, systemExtra }
+   */
+  sendMessage: async (params) => {
     try {
       return await authFetch('/chat/send', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify(params),
       });
     } catch (error) {
       console.error('Send message error:', error);
@@ -979,12 +984,92 @@ export const chatAPI = {
     }
   },
 
-  getHistory: async (userId) => {
+  /**
+   * Conversational assessment — bot talks naturally, generates roadmap
+   * POST /chat/converse
+   * @param {string} message - User message
+   * @param {string} sessionId - UUID for this assessment session
+   */
+  converse: async (message, sessionId) => {
     try {
-      return await authFetch(`/chat/history/${userId}`);
+      return await authFetch('/chat/converse', {
+        method: 'POST',
+        body: JSON.stringify({ message, sessionId }),
+      });
+    } catch (error) {
+      console.error('Converse error:', error);
+      return { success: false, message: 'Connection error' };
+    }
+  },
+
+  /**
+   * Raw Groq call for skill test / external use
+   * POST /chat/groq
+   * @param {Array} messages - Array of { role, content } objects
+   * @param {number} max_tokens - Optional token limit (default 2500)
+   */
+  generateRoadmap: async (messages, max_tokens = 2500) => {
+    try {
+      return await authFetch('/chat/groq', {
+        method: 'POST',
+        body: JSON.stringify({ messages, max_tokens }),
+      });
+    } catch (error) {
+      console.error('Generate roadmap error:', error);
+      return { success: false, error: 'Failed to generate roadmap' };
+    }
+  },
+
+  /**
+   * Get user's full roadmap + all phases
+   * GET /chat/roadmap
+   */
+  getRoadmap: async () => {
+    try {
+      return await authFetch('/chat/roadmap');
+    } catch (error) {
+      console.error('Get roadmap error:', error);
+      return { success: false, roadmap: null, phases: [] };
+    }
+  },
+
+  /**
+   * Unlock next phase (after user completes current phase)
+   * POST /chat/unlock-phase
+   */
+  unlockNextPhase: async () => {
+    try {
+      return await authFetch('/chat/unlock-phase', { method: 'POST' });
+    } catch (error) {
+      console.error('Unlock phase error:', error);
+      return { success: false, message: 'Connection error' };
+    }
+  },
+
+  /**
+   * Check current phase unlock status & progress
+   * GET /chat/phase-status
+   */
+  getPhaseStatus: async () => {
+    try {
+      return await authFetch('/chat/phase-status');
+    } catch (error) {
+      console.error('Phase status error:', error);
+      return { success: false };
+    }
+  },
+
+  /**
+   * Get chat history for a session
+   * GET /chat/history/:sessionId
+   * @param {string} sessionId - Session UUID
+   */
+  getHistory: async (sessionId) => {
+    try {
+      return await authFetch(`/chat/history/${sessionId}`);
     } catch (error) {
       console.error('Get chat history error:', error);
-      return { success: false, message: 'Connection error' };
+      return { success: false, data: [] };
     }
   },
 };
@@ -1100,16 +1185,20 @@ export const pointsAPI = {
 };
 
 // ============================================
-// ✅ NEW — ROADMAP API (Groq AI powered)
-// Calls your backend which already has Groq SDK set up
-// Backend route: POST /chat/roadmap
-// If your backend uses a different route, change the endpoint below
+// ROADMAP API (Groq AI powered)
 // ============================================
 export const roadmapAPI = {
   generate: async (skillProfile) => {
     const {
-      level, topicScores, goal, knowledge,
-      dailyTime, weakTopics, strongTopics,
+      level,
+      topicScores,
+      topicLevel,
+      goal,
+      knowledge,
+      reason,
+      dailyTime,
+      weakTopics,
+      strongTopics,
     } = skillProfile;
 
     const GOAL_LABEL = {
@@ -1125,6 +1214,17 @@ export const roadmapAPI = {
       webapp:    'build my own web application',
       saas:      'launch a SaaS product',
       unsure:    'explore web development and find my path',
+      ecommerce: 'build e-commerce and online stores',
+      design:    'create beautiful UI and design',
+      website:   'build my personal/portfolio website',
+      tool:      'build an automation tool or utility script',
+    };
+
+    const REASON_LABEL = {
+      student:    'BCA/engineering student',
+      job_seeker: 'job seeker targeting developer roles',
+      freelancer: 'freelancer building client projects',
+      personal:   'self-learner building a personal project',
     };
 
     const TIME_LABEL = {
@@ -1134,16 +1234,19 @@ export const roadmapAPI = {
       '2hours': '2+ hours per day',
     };
 
-    const goalText  = GOAL_LABEL[goal]     || goal     || 'learn web development';
-    const timeText  = TIME_LABEL[dailyTime] || dailyTime || '30 minutes per day';
-    const weeks     = level === 'beginner' ? 8 : level === 'intermediate' ? 10 : 12;
-    const weakList  = weakTopics?.length   ? weakTopics.join(', ')   : 'none';
-    const strongList= strongTopics?.length ? strongTopics.join(', ') : 'none';
+    const goalText   = GOAL_LABEL[goal]      || goal      || 'learn web development';
+    const reasonText = REASON_LABEL[reason]  || reason    || 'student';
+    const timeText   = TIME_LABEL[dailyTime] || dailyTime || '30 minutes per day';
+    const weeks      = level === 'beginner' ? 8 : level === 'intermediate' ? 10 : 12;
+    const weakList   = weakTopics?.length   ? weakTopics.join(', ')   : 'none';
+    const strongList = strongTopics?.length ? strongTopics.join(', ') : 'none';
 
     const topicLines = topicScores
-      ? Object.entries(topicScores)
-          .map(([t, s]) => `  - ${t}: ${s.correct}/${s.total} (${s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0}%)`)
-          .join('\n')
+      ? Object.entries(topicScores).map(([t, s]) => {
+          const pct = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
+          const lvl = topicLevel?.[t] || (pct >= 75 ? 'strong' : pct >= 45 ? 'ok' : 'weak');
+          return `  - ${t}: ${s.correct}/${s.total} (${pct}%) → ${lvl.toUpperCase()}`;
+        }).join('\n')
       : '  - Not available';
 
     const systemPrompt = `You are an expert programming tutor at ATL (Anytime Learning), an ed-tech platform for BCA/engineering students in India.
@@ -1153,23 +1256,25 @@ Respond ONLY with valid JSON. No markdown fences, no explanation text outside th
     const userPrompt = `Generate a personalised ${weeks}-week learning roadmap for this student.
 
 STUDENT PROFILE:
+- Type: ${reasonText}
 - Skill level (from adaptive test): ${level}
-- Goal: ${goalText}  
+- Goal: ${goalText}
 - Daily study time: ${timeText}
 - Prior knowledge: ${knowledge || 'Not specified'}
 
-ADAPTIVE TEST SCORES:
+ADAPTIVE TEST SCORES (with per-topic level):
 ${topicLines}
-- Weak topics (scored < 50%): ${weakList}
-- Strong topics (scored ≥ 75%): ${strongList}
+- Weak topics (< 50%): ${weakList}
+- Strong topics (≥ 75%): ${strongList}
 
 RULES:
-1. Address weak topics FIRST
-2. Strong topics can be brief (1 task instead of 3)
-3. Be realistic for ${timeText} of study
-4. Add 1 mini-project every 2 weeks  
-5. Tailor specifically to: ${goalText}
-6. Total: exactly ${weeks} weeks
+1. Address WEAK topics first — they need the most time
+2. OK topics get moderate coverage (2 tasks per week)
+3. Strong topics can be brief (1 review task, no basics)
+4. Be realistic for ${timeText} of study
+5. Add 1 mini-project every 2 weeks
+6. Tailor specifically to: ${goalText} for a ${reasonText}
+7. Total: exactly ${weeks} weeks
 
 Return ONLY this exact JSON shape (no markdown, no backticks):
 {
@@ -1177,7 +1282,8 @@ Return ONLY this exact JSON shape (no markdown, no backticks):
   "summary": "1 sentence explaining what makes this roadmap unique for this student's exact scores",
   "estimatedWeeks": ${weeks},
   "dailyTime": "${dailyTime || '30min'}",
-  "keyInsight": "one sentence: WHY this specific order was chosen based on their weak topics",
+  "keyInsight": "one sentence: WHY this specific order was chosen based on their weak/ok/strong topics",
+  "firstLesson": "exact name of the very first topic/lesson to study (e.g. 'CSS Flexbox Basics')",
   "weeks": [
     {
       "week": 1,
@@ -1191,19 +1297,11 @@ Return ONLY this exact JSON shape (no markdown, no backticks):
 }`;
 
     try {
-      // Uses your existing /chat/send endpoint which already calls Groq on the backend
-      // The backend's chatWithGemini function handles the Groq SDK call
-      const response = await authFetch('/chat/send', {
-        method: 'POST',
-        body: JSON.stringify({
-          message: userPrompt,
-          systemPrompt,
-          history: [],
-          mode: 'roadmap', // optional flag so backend can identify roadmap calls
-        }),
-      });
+      const response = await chatAPI.generateRoadmap([
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: userPrompt   },
+      ]);
 
-      // Handle different response shapes your backend might return
       const raw = response?.message
                || response?.content
                || response?.response
@@ -1239,7 +1337,7 @@ export const api = {
   logs:       logsAPI,
   skilltest:  skilltestAPI,
   points:     pointsAPI,
-  roadmap:    roadmapAPI,   // ✅ NEW
+  roadmap:    roadmapAPI,
 };
 
 export default api;

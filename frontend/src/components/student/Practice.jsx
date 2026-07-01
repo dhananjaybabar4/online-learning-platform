@@ -378,7 +378,7 @@ const Practice = ({ user, onLogout }) => {
                   desc:     'Solve coding problems · HTML / CSS / JS / Python / Logic',
                   action:   () => navigate('/challenges'),
                   external: false,
-                  badge:    '⚡',
+                  
                 },
                 {
                   label:    'Typing Test',

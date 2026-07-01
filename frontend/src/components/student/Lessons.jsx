@@ -40,12 +40,47 @@ const DIFF = {
 const diffStyle = (d = '') => DIFF[d?.toLowerCase()] || DIFF.beginner;
 
 /* ─── BOOST SKILLS DATA ────────────────── */
-// Moved from Home.jsx — shown at bottom of Lessons page
 const BOOST_SKILLS = [
-  { name: 'Typing Speed',  icon: '⌨️', desc: 'Improve your coding speed',      color: '#2563eb', link: 'https://www.typingclub.com/' },
-  { name: 'Excel Mastery', icon: '📊', desc: 'Shortcuts & data tricks',         color: '#16a34a', link: 'https://edu.gcfglobal.org/en/excel/' },
-  { name: 'Git & GitHub',  icon: '🔀', desc: 'Version control essentials',      color: '#4d4398', link: 'https://skills.github.com/' },
-  { name: 'VS Code Tips',  icon: '💻', desc: 'IDE productivity hacks',          color: '#7c3aed', link: 'https://code.visualstudio.com/docs/getstarted/keybindings' },
+  {
+    name: 'Typing Speed',
+    icon: '⌨️',
+    description: 'Improve your coding speed with daily typing practice',
+    difficulty: 'Beginner',
+    xp: 10,
+    duration: 15,
+    link: 'https://www.typingclub.com/',
+    diffColor: { bg: '#f0fdf4', text: '#15803d' },
+  },
+  {
+    name: 'Excel Mastery',
+    icon: '📊',
+    description: 'Master shortcuts, formulas and data tricks in Excel',
+    difficulty: 'Intermediate',
+    xp: 15,
+    duration: 20,
+    link: 'https://edu.gcfglobal.org/en/excel/',
+    diffColor: { bg: '#fefce8', text: '#a16207' },
+  },
+  {
+    name: 'Git & GitHub',
+    icon: '🔀',
+    description: 'Learn version control essentials every developer needs',
+    difficulty: 'Beginner',
+    xp: 20,
+    duration: 25,
+    link: 'https://skills.github.com/',
+    diffColor: { bg: '#f0fdf4', text: '#15803d' },
+  },
+  {
+    name: 'VS Code Tips',
+    icon: '💻',
+    description: 'Boost your productivity with IDE shortcuts and hacks',
+    difficulty: 'Beginner',
+    xp: 10,
+    duration: 10,
+    link: 'https://code.visualstudio.com/docs/getstarted/keybindings',
+    diffColor: { bg: '#f0fdf4', text: '#15803d' },
+  },
 ];
 
 /* ─── HEADER ───────────────────────────── */
@@ -118,9 +153,7 @@ const LessonCard = ({ lesson }) => {
       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.06)'; e.currentTarget.style.transform = 'none'; }}
     >
       <div style={{ height: 3, background: isCompleted ? '#22c55e' : ATL }} />
-
       <div style={{ padding: '14px 16px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {/* Difficulty + done badge */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: diff.bg, color: diff.text, textTransform: 'capitalize' }}>
             {lesson.difficulty || 'Beginner'}
@@ -129,8 +162,6 @@ const LessonCard = ({ lesson }) => {
             <span style={{ background: '#dcfce7', color: '#15803d', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>✓ Done</span>
           )}
         </div>
-
-        {/* Icon + title */}
         <div style={{ textAlign: 'center', padding: '4px 0 2px' }}>
           <div style={{ fontSize: 36, marginBottom: 6, lineHeight: 1 }}>
             {lesson.icon || langIcon(lesson.language)}
@@ -142,8 +173,6 @@ const LessonCard = ({ lesson }) => {
             </p>
           )}
         </div>
-
-        {/* Progress bar */}
         {hasProgress && pct > 0 && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#9ca3af', marginBottom: 3 }}>
@@ -155,20 +184,82 @@ const LessonCard = ({ lesson }) => {
             </div>
           </div>
         )}
-
-        {/* XP + time */}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', fontSize: 11, color: '#9ca3af' }}>
           {lesson.xp_reward          && <span>⭐ {lesson.xp_reward} XP</span>}
           {lesson.estimated_duration && <span>⏱ {lesson.estimated_duration} min</span>}
         </div>
-
-        {/* CTA */}
         <button
           onClick={e => { e.stopPropagation(); navigate(`/lesson/${lesson.id}`); }}
           style={{ width: '100%', background: btnBg, color: '#fff', border: 'none', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'system-ui,sans-serif', marginTop: 4 }}
           onMouseEnter={e => e.currentTarget.style.opacity = .88}
           onMouseLeave={e => e.currentTarget.style.opacity = 1}
         >{btnLabel}</button>
+      </div>
+    </div>
+  );
+};
+
+/* ─── BOOST SKILL CARD — matches LessonCard style exactly ── */
+const BoostSkillCard = ({ skill }) => {
+  const handleOpen = (e) => {
+    e.stopPropagation();
+    window.open(skill.link, '_blank', 'noopener,noreferrer');
+  };
+
+  return (
+    <div
+      onClick={handleOpen}
+      style={{
+        background: '#fff', borderRadius: 14,
+        border: '1.5px solid #e5e7eb',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        cursor: 'pointer', transition: 'box-shadow .2s, transform .18s',
+        boxShadow: '0 1px 3px rgba(0,0,0,.06)',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(77,67,152,.14)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.06)'; e.currentTarget.style.transform = 'none'; }}
+    >
+      {/* top accent bar */}
+      <div style={{ height: 3, background: ATL }} />
+
+      <div style={{ padding: '14px 16px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* Difficulty badge */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{
+            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+            background: skill.diffColor.bg, color: skill.diffColor.text, textTransform: 'capitalize'
+          }}>
+            {skill.difficulty}
+          </span>
+          <span style={{ background: '#ede9ff', color: ATL, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>
+            External
+          </span>
+        </div>
+
+        {/* Icon + title + desc */}
+        <div style={{ textAlign: 'center', padding: '4px 0 2px' }}>
+          <div style={{ fontSize: 36, marginBottom: 6, lineHeight: 1 }}>{skill.icon}</div>
+          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#1e1b4b', lineHeight: 1.3 }}>{skill.name}</h3>
+          <p style={{ margin: '4px 0 0', fontSize: 11, color: '#9ca3af', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {skill.description}
+          </p>
+        </div>
+
+        {/* XP + time */}
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', fontSize: 11, color: '#9ca3af' }}>
+          <span>⭐ {skill.xp} XP</span>
+          <span>⏱ {skill.duration} min</span>
+        </div>
+
+        {/* CTA */}
+        <button
+          onClick={handleOpen}
+          style={{ width: '100%', background: ATL, color: '#fff', border: 'none', borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'system-ui,sans-serif', marginTop: 4 }}
+          onMouseEnter={e => e.currentTarget.style.opacity = .88}
+          onMouseLeave={e => e.currentTarget.style.opacity = 1}
+        >
+          Open Resource →
+        </button>
       </div>
     </div>
   );
@@ -204,47 +295,41 @@ const SectionRow = ({ section, lessons }) => {
 };
 
 /* ─── BOOST SKILLS SECTION ─────────────── */
-// Moved from dashboard — lives at bottom of lessons page
 const BoostSkills = () => {
-  const [open, setOpen] = useState(false); // collapsed by default
+  const [open, setOpen] = useState(true); // expanded by default to match lesson sections
 
   return (
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-      {/* Header toggle */}
-      <button
+      {/* Section header — same style as SectionRow header */}
+      <div
         onClick={() => setOpen(o => !o)}
-        style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'system-ui,sans-serif' }}
+        style={{ padding: '14px 20px', background: '#faf9ff', borderBottom: open ? '1px solid #f0eeff' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 20 }}>🚀</span>
-          <div style={{ textAlign: 'left' }}>
+          <div>
             <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#1e1b4b' }}>Boost Your Skills</h2>
-            <p style={{ margin: 0, fontSize: 11, color: '#9ca3af' }}>Extra resources to level up faster</p>
+            <p style={{ margin: 0, fontSize: 11, color: '#9ca3af' }}>{BOOST_SKILLS.length} resources · External learning tools</p>
           </div>
         </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5"
-          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s', flexShrink: 0 }}>
-          <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Progress bar placeholder — always 0% since external */}
+          <div style={{ width: 100, height: 6, background: '#ede9ff', borderRadius: 99 }}>
+            <div style={{ height: '100%', width: '0%', background: ATL, borderRadius: 99 }} />
+          </div>
+          <span style={{ fontSize: 12, fontWeight: 700, color: ATL, minWidth: 32 }}>–</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5"
+            style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s', flexShrink: 0 }}>
+            <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </div>
 
-      {/* Grid — only shown when open */}
+      {/* Cards grid — same layout as SectionRow */}
       {open && (
-        <div style={{ padding: '4px 16px 16px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
-          {BOOST_SKILLS.map((s, i) => (
-            <div key={i} style={{ background: s.color, borderRadius: 12, padding: '16px 14px', color: '#fff', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ fontSize: 26, marginBottom: 8 }}>{s.icon}</div>
-              <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px', color: '#fff' }}>{s.name}</p>
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,.8)', margin: '0 0 12px', flex: 1 }}>{s.desc}</p>
-              <button
-                onClick={() => window.open(s.link, '_blank')}
-                style={{ background: 'rgba(255,255,255,.2)', color: '#fff', border: 'none', borderRadius: 7, padding: '7px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'system-ui,sans-serif' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,.3)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,.2)'}
-              >
-                Open →
-              </button>
-            </div>
+        <div style={{ padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+          {BOOST_SKILLS.map((skill, i) => (
+            <BoostSkillCard key={i} skill={skill} />
           ))}
         </div>
       )}
@@ -285,7 +370,7 @@ const Lessons = ({ user, onLogout }) => {
       grouped[k].push(l);
     });
 
-  const totalDone    = lessons.filter(l => l.is_completed).length;
+  const totalDone      = lessons.filter(l => l.is_completed).length;
   const activeSections = SECTIONS.filter(s => grouped[s.key]?.length > 0);
 
   if (loading) return (
@@ -347,7 +432,7 @@ const Lessons = ({ user, onLogout }) => {
           <SectionRow key={s.key} section={s} lessons={grouped[s.key]} />
         ))}
 
-        {/* Boost Skills — moved from Home.jsx, collapsed by default */}
+        {/* Boost Skills — same card style as lesson cards, with working external links */}
         <BoostSkills />
 
       </div>
