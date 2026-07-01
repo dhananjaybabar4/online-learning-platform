@@ -5,12 +5,6 @@
 
 ---
 
-## 📸 Preview
-
-![Landing Page](https://online-learning-platform-mu-seven.vercel.app/og-image.png)
-
----
-
 ## 🚀 About
 
 Full-stack online learning platform with structured lessons, quizzes, 
